@@ -8,10 +8,36 @@ export interface Tile {
 
 interface TileGridProps {
   tiles: Tile[];
+  showBack?: boolean;
 }
 
-export default function TileGrid({ tiles }: TileGridProps) {
-  const cells = Array.from({ length: 8 }, (_, i) => tiles[i] || {});
+const backTile: Tile = {
+  href: "/",
+  content: (
+    <div className="flex flex-col items-center gap-2">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-12 h-12 text-gray-400"
+      >
+        <path d="M19 12H5" />
+        <path d="M12 19l-7-7 7-7" />
+      </svg>
+      <span className="text-sm font-medium text-gray-400">Back</span>
+    </div>
+  ),
+};
+
+export default function TileGrid({ tiles, showBack }: TileGridProps) {
+  const cells = Array.from({ length: 8 }, (_, i) => {
+    if (showBack && i === 7) return backTile;
+    return tiles[i] || {};
+  });
 
   return (
     <div className="grid grid-cols-4 grid-rows-2 gap-3 p-3 w-full h-full">

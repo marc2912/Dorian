@@ -63,5 +63,5 @@ export default function LightsPage() {
     },
   ];
 
-  return <TileGrid tiles={tiles} />;
+  return <TileGrid tiles={tiles} showBack />;
 }
