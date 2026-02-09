@@ -22,8 +22,28 @@ interface WeatherData {
   tomorrow: TomorrowWeather;
 }
 
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString();
+  document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires};path=/`;
+}
+
+function toC(f: number): number {
+  return Math.round((f - 32) * 5 / 9);
+}
+
 export default function WeatherPage() {
   const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [unit, setUnit] = useState<"F" | "C">("F");
+
+  useEffect(() => {
+    const saved = getCookie("temp_unit");
+    if (saved === "C") setUnit("C");
+  }, []);
 
   useEffect(() => {
     fetch("/api/weather")
@@ -31,6 +51,16 @@ export default function WeatherPage() {
       .then(setWeather)
       .catch(console.error);
   }, []);
+
+  function toggleUnit() {
+    const next = unit === "F" ? "C" : "F";
+    setUnit(next);
+    setCookie("temp_unit", next, 365);
+  }
+
+  function temp(f: number): string {
+    return unit === "F" ? `${f}` : `${toC(f)}`;
+  }
 
   return (
     <div className="flex flex-col gap-3 p-3 w-full h-full">
@@ -44,12 +74,12 @@ export default function WeatherPage() {
           {weather ? (
             <>
               <WeatherIcon code={weather.today.weatherCode} className="w-20 h-20" />
-              <span className="text-4xl font-bold">{weather.today.currentTemp}°F</span>
+              <span className="text-4xl font-bold">{temp(weather.today.currentTemp)}°{unit}</span>
               <span className="text-sm text-gray-400">
                 {getWeatherLabel(weather.today.weatherCode)}
               </span>
               <span className="text-sm text-gray-500">
-                H:{weather.today.high}° L:{weather.today.low}°
+                H:{temp(weather.today.high)}° L:{temp(weather.today.low)}°
               </span>
             </>
           ) : (
@@ -66,13 +96,13 @@ export default function WeatherPage() {
             <>
               <WeatherIcon code={weather.tomorrow.weatherCode} className="w-20 h-20" />
               <span className="text-4xl font-bold">
-                {weather.tomorrow.high}°F
+                {temp(weather.tomorrow.high)}°{unit}
               </span>
               <span className="text-sm text-gray-400">
                 {getWeatherLabel(weather.tomorrow.weatherCode)}
               </span>
               <span className="text-sm text-gray-500">
-                H:{weather.tomorrow.high}° L:{weather.tomorrow.low}°
+                H:{temp(weather.tomorrow.high)}° L:{temp(weather.tomorrow.low)}°
               </span>
             </>
           ) : (
@@ -83,7 +113,14 @@ export default function WeatherPage() {
 
       {/* Bottom row — back button right-aligned */}
       <div className="grid grid-cols-2 gap-3" style={{ height: 80 }}>
-        <div className="rounded-2xl bg-[var(--tile-bg)] border border-[var(--tile-border)]" />
+        <button
+          onClick={toggleUnit}
+          className="flex items-center justify-center rounded-2xl w-full h-full bg-[var(--tile-bg)] border border-[var(--tile-border)] hover:brightness-125 active:scale-95 cursor-pointer transition-all duration-150"
+        >
+          <span className="text-lg font-semibold text-gray-300">
+            °{unit === "F" ? "F → °C" : "C → °F"}
+          </span>
+        </button>
         <a href="/" className="block">
           <div className="flex items-center justify-center rounded-2xl w-full h-full bg-[var(--tile-bg)] border border-[var(--tile-border)] hover:brightness-125 active:scale-95 cursor-pointer transition-all duration-150">
             <div className="flex flex-col items-center gap-2">
