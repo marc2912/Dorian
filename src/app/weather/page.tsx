@@ -3,18 +3,26 @@
 import { useEffect, useState } from "react";
 import WeatherIcon, { getWeatherLabel } from "@/components/icons/WeatherIcon";
 
+interface PrecipWindow {
+  start: string;
+  end: string;
+  label: string;
+}
+
 interface TodayWeather {
   currentTemp: number;
   weatherCode: number;
   high: number;
   low: number;
   dailyWeatherCode: number;
+  precipitation: PrecipWindow[];
 }
 
 interface TomorrowWeather {
   high: number;
   low: number;
   weatherCode: number;
+  precipitation: PrecipWindow[];
 }
 
 interface WeatherData {
@@ -81,6 +89,17 @@ export default function WeatherPage() {
               <span className="text-sm text-gray-500">
                 H:{temp(weather.today.high)}° L:{temp(weather.today.low)}°
               </span>
+              {weather.today.precipitation.length > 0 ? (
+                <div className="flex flex-col items-center gap-0.5 mt-1">
+                  {weather.today.precipitation.map((w, i) => (
+                    <span key={i} className="text-xs text-blue-400">
+                      {w.label} {w.start}–{w.end}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-gray-600 mt-1">No precipitation</span>
+              )}
             </>
           ) : (
             <span className="text-gray-500">Loading…</span>
@@ -104,6 +123,17 @@ export default function WeatherPage() {
               <span className="text-sm text-gray-500">
                 H:{temp(weather.tomorrow.high)}° L:{temp(weather.tomorrow.low)}°
               </span>
+              {weather.tomorrow.precipitation.length > 0 ? (
+                <div className="flex flex-col items-center gap-0.5 mt-1">
+                  {weather.tomorrow.precipitation.map((w, i) => (
+                    <span key={i} className="text-xs text-blue-400">
+                      {w.label} {w.start}–{w.end}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="text-xs text-gray-600 mt-1">No precipitation</span>
+              )}
             </>
           ) : (
             <span className="text-gray-500">Loading…</span>
