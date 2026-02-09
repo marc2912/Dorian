@@ -1,5 +1,6 @@
 import TileGrid from "@/components/TileGrid";
 import LightbulbIcon from "@/components/icons/LightbulbIcon";
+import WeatherIcon from "@/components/icons/WeatherIcon";
 
 export default function Home() {
   const tiles = [
@@ -9,6 +10,15 @@ export default function Home() {
         <div className="flex flex-col items-center gap-2">
           <LightbulbIcon />
           <span className="text-sm font-medium text-gray-300">Lights</span>
+        </div>
+      ),
+    },
+    {
+      href: "/weather",
+      content: (
+        <div className="flex flex-col items-center gap-2">
+          <WeatherIcon code={2} />
+          <span className="text-sm font-medium text-gray-300">Weather</span>
         </div>
       ),
     },
