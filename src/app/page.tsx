@@ -1,4 +1,5 @@
 import TileGrid from "@/components/TileGrid";
+import DateTimeTile from "@/components/DateTimeTile";
 import LightbulbIcon from "@/components/icons/LightbulbIcon";
 import WeatherIcon from "@/components/icons/WeatherIcon";
 
@@ -12,6 +13,10 @@ export default function Home() {
           <span className="text-sm font-medium text-gray-300">Lights</span>
         </div>
       ),
+    },
+    {
+      colSpan: 2,
+      content: <DateTimeTile />,
     },
     {
       href: "/weather",

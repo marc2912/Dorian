@@ -4,6 +4,7 @@ export interface Tile {
   content?: React.ReactNode;
   onClick?: () => void;
   href?: string;
+  colSpan?: number;
 }
 
 interface TileGridProps {
@@ -34,21 +35,37 @@ const backTile: Tile = {
 };
 
 export default function TileGrid({ tiles, showBack }: TileGridProps) {
-  const cells = Array.from({ length: 8 }, (_, i) => {
-    if (showBack && i === 7) return backTile;
-    return tiles[i] || {};
-  });
+  const cells: Tile[] = [];
+  let gridPos = 0;
+
+  for (const tile of tiles) {
+    if (gridPos >= 8) break;
+    cells.push(tile);
+    gridPos += tile.colSpan ?? 1;
+  }
+
+  while (gridPos < 8) {
+    if (showBack && gridPos === 7) {
+      cells.push(backTile);
+    } else {
+      cells.push({});
+    }
+    gridPos++;
+  }
 
   return (
     <div className="grid grid-cols-4 grid-rows-2 gap-3 p-3 w-full h-full">
       {cells.map((tile, i) => {
+        const interactive = !!(tile.href || tile.onClick);
+        const span = tile.colSpan ?? 1;
+
         const inner = (
           <div
             className={`
               flex items-center justify-center rounded-2xl
               w-full h-full
               bg-[var(--tile-bg)] border border-[var(--tile-border)]
-              ${tile.content ? "hover:brightness-125 active:scale-95 cursor-pointer" : ""}
+              ${interactive ? "hover:brightness-125 active:scale-95 cursor-pointer" : ""}
               transition-all duration-150
             `}
           >
@@ -56,9 +73,11 @@ export default function TileGrid({ tiles, showBack }: TileGridProps) {
           </div>
         );
 
+        const style = span > 1 ? { gridColumn: `span ${span}` } : undefined;
+
         if (tile.href) {
           return (
-            <a key={i} href={tile.href} className="block">
+            <a key={i} href={tile.href} className="block" style={style}>
               {inner}
             </a>
           );
@@ -66,14 +85,14 @@ export default function TileGrid({ tiles, showBack }: TileGridProps) {
 
         if (tile.onClick) {
           return (
-            <button key={i} onClick={tile.onClick} className="block w-full h-full">
+            <button key={i} onClick={tile.onClick} className="block w-full h-full" style={style}>
               {inner}
             </button>
           );
         }
 
         return (
-          <div key={i}>
+          <div key={i} style={style}>
             {inner}
           </div>
         );
