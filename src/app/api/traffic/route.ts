@@ -12,10 +12,22 @@ export async function GET() {
     );
   }
 
-  const res = await fetch(`${h}/getLight`);
-  const data = await res.json();
+  console.log("[traffic] GET /getLight");
 
-  return NextResponse.json(data);
+  try {
+    const res = await fetch(`${h}/getLight`, {
+      signal: AbortSignal.timeout(5000),
+    });
+    const data = await res.json();
+    console.log("[traffic] GET response:", JSON.stringify(data));
+    return NextResponse.json(data);
+  } catch (err) {
+    console.error("[traffic] GET error:", err);
+    return NextResponse.json(
+      { error: "Failed to reach traffic light" },
+      { status: 502 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -30,16 +42,26 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+  console.log("[traffic] POST /setLight payload:", JSON.stringify(body));
 
-  const res = await fetch(`${h}/setLight`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${t}`,
-    },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: res.status });
+  try {
+    const res = await fetch(`${h}/setLight`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${t}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
+    });
+    const data = await res.json();
+    console.log("[traffic] POST response:", res.status, JSON.stringify(data));
+    return NextResponse.json(data, { status: res.status });
+  } catch (err) {
+    console.error("[traffic] POST error:", err);
+    return NextResponse.json(
+      { error: "Failed to reach traffic light" },
+      { status: 502 }
+    );
+  }
 }
