@@ -1,25 +1,76 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-type Mode = "off" | "auto" | "traffic" | "party";
+type Mode = "off" | "auto" | "manual" | "party";
 type LightColor = "red" | "yellow" | "green";
+
+async function sendCommand(body: Record<string, unknown>) {
+  await fetch("/api/traffic", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
 
 export default function TrafficPage() {
   const [mode, setMode] = useState<Mode>("off");
-  const [lights, setLights] = useState({ red: false, yellow: false, green: false });
+  const [activeLight, setActiveLight] = useState<LightColor | null>(null);
   const [partyNumber, setPartyNumber] = useState<number | null>(null);
 
+  useEffect(() => {
+    fetch("/api/traffic")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.mode === "party") {
+          setMode("party");
+          setActiveLight(null);
+        } else if (data.mode === "auto") {
+          setMode("auto");
+          setActiveLight(data.light ?? null);
+        } else if (data.mode === "manual" && data.light) {
+          setMode("manual");
+          setActiveLight(data.light);
+        } else {
+          setMode("off");
+          setActiveLight(null);
+        }
+      })
+      .catch(console.error);
+  }, []);
+
   function clickLight(color: LightColor) {
-    setMode("traffic");
-    setPartyNumber(null);
-    setLights((prev) => ({ ...prev, [color]: !prev[color] }));
+    if (mode === "manual" && activeLight === color) {
+      setMode("off");
+      setActiveLight(null);
+      sendCommand({ mode: "off" });
+    } else {
+      setMode("manual");
+      setActiveLight(color);
+      setPartyNumber(null);
+      sendCommand({ mode: "manual", action: color });
+    }
   }
 
-  function clickMode(m: "off" | "auto" | "party") {
-    setMode(m);
-    setLights({ red: false, yellow: false, green: false });
+  function clickOff() {
+    setMode("off");
+    setActiveLight(null);
     setPartyNumber(null);
+    sendCommand({ mode: "off" });
+  }
+
+  function clickAuto() {
+    setMode("auto");
+    setActiveLight(null);
+    setPartyNumber(null);
+    sendCommand({ mode: "auto", action: 60 });
+  }
+
+  function clickParty() {
+    setMode("party");
+    setActiveLight(null);
+    setPartyNumber(null);
+    sendCommand({ mode: "party" });
   }
 
   function clickNumber(n: number) {
@@ -46,6 +97,11 @@ export default function TrafficPage() {
     },
   };
 
+  function isLightOn(color: LightColor): boolean {
+    if (mode === "manual") return activeLight === color;
+    return false;
+  }
+
   return (
     <div className="flex gap-3 p-3 w-full h-full">
       {/* Left half — traffic light + back button */}
@@ -53,7 +109,7 @@ export default function TrafficPage() {
         <div className="flex-1 flex items-center justify-center rounded-2xl bg-[var(--tile-bg)] border border-[var(--tile-border)]">
           <div className="flex flex-col items-center gap-5 bg-gray-800 rounded-2xl px-7 py-6">
             {lightColors.map((color) => {
-              const on = mode === "traffic" && lights[color];
+              const on = isLightOn(color);
               return (
                 <button
                   key={color}
@@ -88,22 +144,42 @@ export default function TrafficPage() {
 
       {/* Right half — controls */}
       <div className="flex-1 flex flex-col gap-3">
-        {/* OFF / auto / party buttons */}
-        {(["off", "auto", "party"] as const).map((m) => (
-          <button
-            key={m}
-            onClick={() => clickMode(m)}
-            className={`flex-1 flex items-center justify-center rounded-2xl text-lg font-semibold
-              border transition-all duration-150 cursor-pointer active:scale-95
-              ${mode === m
-                ? "bg-blue-600/30 border-blue-500 text-blue-300"
-                : "bg-[var(--tile-bg)] border-[var(--tile-border)] text-gray-400 hover:brightness-125"
-              }
-            `}
-          >
-            {m === "off" ? "OFF" : m === "auto" ? "auto" : "party"}
-          </button>
-        ))}
+        <button
+          onClick={clickOff}
+          className={`flex-1 flex items-center justify-center rounded-2xl text-lg font-semibold
+            border transition-all duration-150 cursor-pointer active:scale-95
+            ${mode === "off"
+              ? "bg-blue-600/30 border-blue-500 text-blue-300"
+              : "bg-[var(--tile-bg)] border-[var(--tile-border)] text-gray-400 hover:brightness-125"
+            }
+          `}
+        >
+          OFF
+        </button>
+        <button
+          onClick={clickAuto}
+          className={`flex-1 flex items-center justify-center rounded-2xl text-lg font-semibold
+            border transition-all duration-150 cursor-pointer active:scale-95
+            ${mode === "auto"
+              ? "bg-blue-600/30 border-blue-500 text-blue-300"
+              : "bg-[var(--tile-bg)] border-[var(--tile-border)] text-gray-400 hover:brightness-125"
+            }
+          `}
+        >
+          auto
+        </button>
+        <button
+          onClick={clickParty}
+          className={`flex-1 flex items-center justify-center rounded-2xl text-lg font-semibold
+            border transition-all duration-150 cursor-pointer active:scale-95
+            ${mode === "party"
+              ? "bg-blue-600/30 border-blue-500 text-blue-300"
+              : "bg-[var(--tile-bg)] border-[var(--tile-border)] text-gray-400 hover:brightness-125"
+            }
+          `}
+        >
+          party
+        </button>
 
         {/* Number buttons row */}
         <div className="flex-1 flex items-center justify-center gap-4">
