@@ -74,16 +74,18 @@ export default function TrafficPage() {
     sendCommand({ mode: "auto", action: 60 });
   }
 
+  const partyActions = ["chaos", "strobe", "solo", "countdown"] as const;
+
   function clickParty() {
     setMode("party");
     setLights(LIGHTS_OFF);
     setPartyNumber(null);
-    sendCommand({ mode: "party" });
   }
 
   function clickNumber(n: number) {
     if (mode !== "party") return;
     setPartyNumber(n);
+    sendCommand({ mode: "party", action: partyActions[n - 1] });
   }
 
   const isBlinking = mode === "party" && partyNumber === null;
