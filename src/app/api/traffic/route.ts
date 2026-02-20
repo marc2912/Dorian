@@ -12,6 +12,8 @@ export async function GET() {
     );
   }
 
+  const wsUrl = h.replace(/^http/, "ws") + ":81";
+
   console.log("[traffic] GET /getLight");
 
   try {
@@ -20,11 +22,11 @@ export async function GET() {
     });
     const data = await res.json();
     console.log("[traffic] GET response:", JSON.stringify(data));
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, wsUrl });
   } catch (err) {
     console.error("[traffic] GET error:", err);
     return NextResponse.json(
-      { error: "Failed to reach traffic light" },
+      { wsUrl, error: "Failed to reach traffic light" },
       { status: 502 }
     );
   }

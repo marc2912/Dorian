@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Mode = "off" | "auto" | "manual" | "party";
 type LightColor = "red" | "yellow" | "green";
@@ -12,6 +12,14 @@ interface Lights {
 }
 
 const LIGHTS_OFF: Lights = { red: false, yellow: false, green: false };
+
+const PARTY_ACTIONS = ["chaos", "strobe", "solo", "countdown"] as const;
+const STYLE_TO_NUMBER: Record<string, number> = {
+  chaos: 1,
+  strobe: 2,
+  solo: 3,
+  countdown: 4,
+};
 
 async function sendCommand(body: Record<string, unknown>) {
   await fetch("/api/traffic", {
@@ -25,67 +33,69 @@ export default function TrafficPage() {
   const [mode, setMode] = useState<Mode>("off");
   const [lights, setLights] = useState<Lights>(LIGHTS_OFF);
   const [partyNumber, setPartyNumber] = useState<number | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    let ws: WebSocket | null = null;
+
     fetch("/api/traffic")
       .then((res) => res.json())
       .then((data) => {
-        if (data.mode === "party") {
-          setMode("party");
-          setLights({ red: !!data.red, yellow: !!data.yellow, green: !!data.green });
-        } else if (data.mode === "auto") {
-          setMode("auto");
-          setLights(LIGHTS_OFF);
-        } else if (data.mode === "manual") {
-          setMode("manual");
-          setLights({
-            red: data.red ?? data.light === "red",
-            yellow: data.yellow ?? data.light === "yellow",
-            green: data.green ?? data.light === "green",
-          });
-        } else {
-          setMode("off");
-          setLights(LIGHTS_OFF);
+        if (data.wsUrl) {
+          ws = new WebSocket(data.wsUrl);
+          wsRef.current = ws;
+
+          ws.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+            setMode(msg.mode ?? "off");
+            setLights({
+              red: !!msg.red,
+              yellow: !!msg.yellow,
+              green: !!msg.green,
+            });
+            if (msg.mode === "party" && msg.style) {
+              setPartyNumber(STYLE_TO_NUMBER[msg.style] ?? null);
+            } else if (msg.mode !== "party") {
+              setPartyNumber(null);
+            }
+          };
+
+          ws.onclose = () => {
+            wsRef.current = null;
+          };
         }
       })
       .catch(console.error);
+
+    return () => {
+      ws?.close();
+    };
   }, []);
 
   function clickLight(color: LightColor) {
     const newState = !lights[color];
-    const newLights = { ...lights, [color]: newState };
-    setMode("manual");
-    setLights(newLights);
-    setPartyNumber(null);
     sendCommand({ mode: "manual", action: { light: color, state: newState ? "on" : "off" } });
   }
 
   function clickOff() {
     setMode("off");
-    setLights(LIGHTS_OFF);
-    setPartyNumber(null);
     sendCommand({ mode: "off" });
   }
 
   function clickAuto() {
     setMode("auto");
-    setLights(LIGHTS_OFF);
-    setPartyNumber(null);
     sendCommand({ mode: "auto", action: 60 });
   }
 
-  const partyActions = ["chaos", "strobe", "solo", "countdown"] as const;
-
   function clickParty() {
     setMode("party");
-    setLights(LIGHTS_OFF);
     setPartyNumber(null);
   }
 
   function clickNumber(n: number) {
     if (mode !== "party") return;
     setPartyNumber(n);
-    sendCommand({ mode: "party", action: partyActions[n - 1] });
+    sendCommand({ mode: "party", action: PARTY_ACTIONS[n - 1] });
   }
 
   const isBlinking = mode === "party" && partyNumber === null;
@@ -113,18 +123,15 @@ export default function TrafficPage() {
       <div className="flex-1 flex flex-col gap-3">
         <div className="flex-1 flex items-center justify-center rounded-2xl bg-[var(--tile-bg)] border border-[var(--tile-border)]">
           <div className="flex flex-col items-center gap-5 bg-gray-800 rounded-2xl px-7 py-6">
-            {lightColors.map((color) => {
-              const on = mode === "manual" && lights[color];
-              return (
-                <button
-                  key={color}
-                  onClick={() => clickLight(color)}
-                  className={`w-20 h-20 rounded-full transition-all duration-200 cursor-pointer active:scale-90
-                    ${on ? lightStyles[color].on : lightStyles[color].off}
-                  `}
-                />
-              );
-            })}
+            {lightColors.map((color) => (
+              <button
+                key={color}
+                onClick={() => clickLight(color)}
+                className={`w-20 h-20 rounded-full transition-all duration-100 cursor-pointer active:scale-90
+                  ${lights[color] ? lightStyles[color].on : lightStyles[color].off}
+                `}
+              />
+            ))}
           </div>
         </div>
         <a href="/" className="block" style={{ height: 56 }}>
