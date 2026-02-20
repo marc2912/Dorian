@@ -5,6 +5,14 @@ import { useEffect, useState } from "react";
 type Mode = "off" | "auto" | "manual" | "party";
 type LightColor = "red" | "yellow" | "green";
 
+interface Lights {
+  red: boolean;
+  yellow: boolean;
+  green: boolean;
+}
+
+const LIGHTS_OFF: Lights = { red: false, yellow: false, green: false };
+
 async function sendCommand(body: Record<string, unknown>) {
   await fetch("/api/traffic", {
     method: "POST",
@@ -15,7 +23,7 @@ async function sendCommand(body: Record<string, unknown>) {
 
 export default function TrafficPage() {
   const [mode, setMode] = useState<Mode>("off");
-  const [activeLight, setActiveLight] = useState<LightColor | null>(null);
+  const [lights, setLights] = useState<Lights>(LIGHTS_OFF);
   const [partyNumber, setPartyNumber] = useState<number | null>(null);
 
   useEffect(() => {
@@ -24,51 +32,51 @@ export default function TrafficPage() {
       .then((data) => {
         if (data.mode === "party") {
           setMode("party");
-          setActiveLight(null);
+          setLights({ red: !!data.red, yellow: !!data.yellow, green: !!data.green });
         } else if (data.mode === "auto") {
           setMode("auto");
-          setActiveLight(data.light ?? null);
-        } else if (data.mode === "manual" && data.light) {
+          setLights(LIGHTS_OFF);
+        } else if (data.mode === "manual") {
           setMode("manual");
-          setActiveLight(data.light);
+          setLights({
+            red: data.red ?? data.light === "red",
+            yellow: data.yellow ?? data.light === "yellow",
+            green: data.green ?? data.light === "green",
+          });
         } else {
           setMode("off");
-          setActiveLight(null);
+          setLights(LIGHTS_OFF);
         }
       })
       .catch(console.error);
   }, []);
 
   function clickLight(color: LightColor) {
-    if (mode === "manual" && activeLight === color) {
-      setMode("off");
-      setActiveLight(null);
-      sendCommand({ mode: "off" });
-    } else {
-      setMode("manual");
-      setActiveLight(color);
-      setPartyNumber(null);
-      sendCommand({ mode: "manual", action: color });
-    }
+    const newState = !lights[color];
+    const newLights = { ...lights, [color]: newState };
+    setMode("manual");
+    setLights(newLights);
+    setPartyNumber(null);
+    sendCommand({ mode: "manual", action: { light: color, state: newState ? "on" : "off" } });
   }
 
   function clickOff() {
     setMode("off");
-    setActiveLight(null);
+    setLights(LIGHTS_OFF);
     setPartyNumber(null);
     sendCommand({ mode: "off" });
   }
 
   function clickAuto() {
     setMode("auto");
-    setActiveLight(null);
+    setLights(LIGHTS_OFF);
     setPartyNumber(null);
     sendCommand({ mode: "auto", action: 60 });
   }
 
   function clickParty() {
     setMode("party");
-    setActiveLight(null);
+    setLights(LIGHTS_OFF);
     setPartyNumber(null);
     sendCommand({ mode: "party" });
   }
@@ -97,11 +105,6 @@ export default function TrafficPage() {
     },
   };
 
-  function isLightOn(color: LightColor): boolean {
-    if (mode === "manual") return activeLight === color;
-    return false;
-  }
-
   return (
     <div className="flex gap-3 p-3 w-full h-full">
       {/* Left half — traffic light + back button */}
@@ -109,7 +112,7 @@ export default function TrafficPage() {
         <div className="flex-1 flex items-center justify-center rounded-2xl bg-[var(--tile-bg)] border border-[var(--tile-border)]">
           <div className="flex flex-col items-center gap-5 bg-gray-800 rounded-2xl px-7 py-6">
             {lightColors.map((color) => {
-              const on = isLightOn(color);
+              const on = mode === "manual" && lights[color];
               return (
                 <button
                   key={color}
